@@ -1,11 +1,12 @@
 package sniffer
 
 import (
-	"gwall-slave/log"
-	"gwall-slave/modules"
-	"gwall-slave/packets"
 	"net"
 	"time"
+
+	"github.com/0prototype/gwall-slave/log"
+	"github.com/0prototype/gwall-slave/modules"
+	"github.com/0prototype/gwall-slave/packets"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -31,6 +32,7 @@ type Sniffer struct {
 	packDataHistory   map[int64][]packets.PackData
 	packDataHistoryCh chan []packets.PackData
 	currentQueue      []packets.PackData
+	queueTime         time.Time
 	packDataCh        chan packets.PackData
 }
 

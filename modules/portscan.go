@@ -1,39 +1,47 @@
 package modules
 
 import (
-	"gwall-slave/log"
-	"gwall-slave/packets"
 	"net"
+
+	"github.com/0prototype/gwall-master/entities"
+	"github.com/0prototype/gwall-slave/log"
+	"github.com/0prototype/gwall-slave/packets"
 )
 
 type PortscanModule struct {
 	PacketCh       chan []packets.PackData
 	PortsTreshhold int
-	ipBufferSize   int
+	pData          map[string][]string
 	myIp           net.IP
 	logger         *log.Logger
 }
 
-func AnalyzePortScan(pm *PortscanModule, packets []packets.PackData) {
+func AnalyzePortScan(pm *PortscanModule,
+	packets []packets.PackData) {
 	if len(packets) == 0 {
 		return
 	}
-
-	data := make(map[string][]string)
 	for _, packet := range packets {
-		if packet.SrcIp.String() != pm.myIp.String() {
-			if !stringInSlice(packet.DstPort.String(), data[packet.SrcIp.String()]) {
-				data[packet.SrcIp.String()] = append(data[packet.SrcIp.String()], packet.DstPort.String())
+		if packet.SrcIp.String() != pm.myIp.String() &&
+			packet.Syn {
+			if !stringInSlice(packet.DstPort.String(),
+				pm.pData[packet.SrcIp.String()]) {
+				pm.pData[packet.SrcIp.String()] =
+					append(pm.pData[packet.SrcIp.String()],
+						packet.DstPort.String())
 			}
 		}
 	}
-
-	//fmt.Println("END DATA ", data)
-	for ip, portData := range data {
+	for ip, portData := range pm.pData {
 		if len(portData) > pm.PortsTreshhold {
-			pm.logger.Log("[Warning] Possible port scan from: ", ip)
+			SendAlert(&entities.Alert{
+				AlertType: entities.PortScanAlert,
+				Title:     "Detected possible port scan attempt",
+				Message:   "IP address of scanning host: " + ip,
+			})
 		}
 	}
+	pm.pData = make(map[string][]string)
 }
 
 func stringInSlice(str string, list []string) bool {
@@ -70,8 +78,8 @@ func (pm *PortscanModule) OnSnifferData(pData []packets.PackData) {
 
 func NewPortscanModule(logger *log.Logger) *PortscanModule {
 	return &PortscanModule{
-		ipBufferSize:   100,
-		PacketCh:       make(chan []packets.PackData),
+		PacketCh: make(chan []packets.PackData),
+
 		PortsTreshhold: 30,
 		logger:         logger,
 	}

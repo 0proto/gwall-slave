@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 	"io"
-	"krotms-slave/log"
-	"krotms-slave/modules"
-	"krotms-slave/sniffer"
 	"net"
 	"net/http"
-	"time"
+
+	"github.com/0prototype/gwall-slave/log"
+	"github.com/0prototype/gwall-slave/modules"
+	"github.com/0prototype/gwall-slave/sniffer"
 
 	"github.com/google/gopacket/pcap"
 )
@@ -16,11 +16,10 @@ import (
 var (
 	device       string = "en0"
 	filter       string = "tcp"
-	snapshot_len int32  = 1024
+	snapshot_len int32  = 256
 	promiscuous  bool   = true
 	err          error
-	period       int64         = 1
-	timeout      time.Duration = 1 * time.Second
+	period       int64 = 1
 	handle       *pcap.Handle
 )
 
@@ -54,6 +53,10 @@ func MyLocalIP() net.IP {
 	return nil
 }
 
+func registerMasterServer() {
+
+}
+
 func info(w http.ResponseWriter, r *http.Request) {
 
 	io.WriteString(w, "[Log]")
@@ -64,8 +67,9 @@ func main() {
 	logger := log.NewLogger("./krotms-slave.log")
 
 	// Select Monitoring/Analytics Modules
-	mdls := make([]modules.Module, 1)
+	mdls := make([]modules.Module, 2)
 	mdls[0] = modules.NewPortscanModule(logger)
+	mdls[1] = modules.NewAnomalyModule(logger)
 
 	// Initialize Sniffer & attach modules
 	snfr := sniffer.NewSniffer(sniffer.SnifferConfig{
@@ -74,7 +78,6 @@ func main() {
 		SnapshotLen: snapshot_len,
 		Promiscous:  promiscuous,
 		Period:      period,
-		Timeout:     timeout,
 		Handle:      handle,
 		Modules:     mdls,
 		MyLocalIP:   MyLocalIP(),
